@@ -12,3 +12,4 @@
 """
 EMPTY = "_"
 DRAW = "Draw"
+EPSILON = 1e-5

@@ -12,10 +12,12 @@
 """
 
 import logging
+import copy
+
 from random import shuffle
 from typing import List
 
-from ai_game.common import Board, Color, Action, get_empty_positions, PutPieceAction, Piece
+from ai_game.common import Board, Color, Action, get_empty_positions, PutPieceAction, Piece, State, put_piece, is_full
 from ai_game.game import Game
 
 logger = logging.getLogger(__name__)
@@ -44,7 +46,7 @@ class TicTacToe(Game):
 
     def _init_board(self):
         logger.info("initializing board...")
-        self.board = Board(self.BOARD_SIZE)
+        self.board = self.get_init_board()
 
     def _assign_color(self):
         logger.info("assigning color...")
@@ -55,21 +57,57 @@ class TicTacToe(Game):
             player.set_color(color)
             self.color2player[color] = player
 
-    def get_valid_actions(self, color: Color) -> List[Action]:
-        empty_positions = get_empty_positions(self.board)
-        action_list = [PutPieceAction(row=r, col=c, piece=Piece(color=color)) for r, c in empty_positions]
-        return action_list
+    @classmethod
+    def get_init_board(cls) -> Board:
+        board = Board(cls.BOARD_SIZE)
+        return board
 
-    def get_win_color(self):
-        all_lines = self.board.rows + self.board.cols + self.board.diagonals
+    @classmethod
+    def get_init_state(cls) -> State:
+        board = cls.get_init_board()
+        color = cls.COLOR_LIST[0]
+        state = State(board=board, color=color)
+        return state
+
+    @classmethod
+    def get_win_color(cls, state: State) -> Color:
+        board = state.board
+        all_lines = board.rows + board.cols + board.diagonals
         for line in all_lines:
             color = get_line_same_color(line)
             if color:
                 return color
         return None
 
+    @classmethod
+    def get_valid_action_list(cls, state: State) -> List[Action]:
+        board = state.board
+        empty_positions = get_empty_positions(board)
+        action_list = [PutPieceAction(row=r, col=c, piece=Piece(color=state.color)) for r, c in empty_positions]
+        return action_list
+
+    @classmethod
+    def is_terminate(cls, state: State) -> bool:
+        if cls.get_win_color(state):
+            return True
+        return is_full(state.board)
+
+    @classmethod
+    def _get_next_color(cls, color: Color) -> Color:
+        color_idx = cls.COLOR_LIST.index(color)
+        next_idx = (color_idx + 1) % len(cls.COLOR_LIST)
+        return cls.COLOR_LIST[next_idx]
+
+    @classmethod
+    def state_trans_func(cls, state: State, action: PutPieceAction) -> State:
+        next_board = copy.deepcopy(state.board)
+        put_piece(next_board, action)
+        next_color = cls._get_next_color(state.color)
+        next_state = State(board=next_board, color=next_color)
+        return next_state
+
     def apply_action(self, action: PutPieceAction):
-        self.board.set_piece(action.row, action.col, action.piece)
+        put_piece(self.board, action)
 
     def start(self):
         logger.info("game starts")
@@ -83,16 +121,17 @@ class TicTacToe(Game):
             skip_num = 0
             logger.info(f"round:{round + 1}")
             for player in self.player_list:
+                self.cur_player = player
                 winner = self.get_winner()
                 if winner:
                     break
                 logger.info(f"player:{player.name}'s action")
-                action_list = self.get_valid_actions(player.color)
+                action_list = self.get_valid_action_list(self.cur_state)
                 if not action_list:
                     logger.info(f"player:{player.name} has no valid action, skip")
                     skip_num += 1
                 else:
-                    action = player.choose_action(action_list)
+                    action = player.choose_action(self.cur_state, action_list)
                     logger.info(f"player:{player.name} choose action:{action}")
                     self.apply_action(action)
                 logger.info("current board:\n" + str(self.board))

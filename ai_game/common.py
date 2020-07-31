@@ -11,8 +11,11 @@
 -------------------------------------------------
 """
 from enum import Enum
+from random import choice
 
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
+
 from ai_game.constant import *
 from typing import List, Tuple
 
@@ -32,6 +35,9 @@ class Piece(BaseModel):
 
     def __str__(self):
         return self.__repr__()
+
+    def __hash__(self):
+        return hash((type(self),) + tuple(self.__dict__.values()))
 
 
 class Board(object):
@@ -79,11 +85,48 @@ def get_empty_positions(board: Board) -> List[Tuple[int, int]]:
     return rs_list
 
 
+def is_full(board: Board) -> bool:
+    empty_positions = get_empty_positions(board)
+    return len(empty_positions) == 0
+
+
+class State(object):
+    def __init__(self, board: Board, color: Color):
+        self.board = board
+        self.color = color
+
+    def __repr__(self):
+        rs_str = self.color.value + "\n" + self.board.__str__()
+        return rs_str
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __hash__(self):
+        return hash((str(self.board), self.color))
+
+    def __eq__(self, other):
+        if not isinstance(other, State):
+            return False
+        return hash(other) == self.__hash__()
+
+
 class Action(BaseModel):
-    pass
+    def __hash__(self):
+        return hash((type(self),) + tuple(self.__dict__.values()))
 
 
 class PutPieceAction(Action):
     row: int
     col: int
     piece: Piece
+
+
+def put_piece(board: Board, action: PutPieceAction):
+    board.set_piece(action.row, action.col, action.piece)
+
+
+class Strategy:
+    @staticmethod
+    def random_choose(state: State, action_list: List[Action]) -> Action:
+        return choice(action_list)
