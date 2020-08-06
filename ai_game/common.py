@@ -20,7 +20,8 @@ from ai_game.constant import *
 from typing import List, Tuple
 
 
-class Color(Enum):
+class Color(str, Enum):
+    BLANK = "_"
     BLACK = "B"
     WHITE = "W"
     X = "X"
@@ -41,9 +42,10 @@ class Piece(BaseModel):
 
 
 class Board(object):
-    def __init__(self, row_num, col_num=None):
+
+    def __init__(self, row_num, col_num):
         self.row_num = row_num
-        self.col_num = col_num if col_num else row_num
+        self.col_num = col_num
         self.board = [[None] * self.col_num for _ in range(self.row_num)]
 
     @property
@@ -90,10 +92,9 @@ def is_full(board: Board) -> bool:
     return len(empty_positions) == 0
 
 
-class State(object):
-    def __init__(self, board: Board, color: Color):
-        self.board = board
-        self.color = color
+class State(BaseModel):
+    board: Board
+    color: Color
 
     def __repr__(self):
         rs_str = self.color.value + "\n" + self.board.__str__()

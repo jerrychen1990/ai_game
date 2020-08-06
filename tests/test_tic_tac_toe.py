@@ -13,6 +13,7 @@
 import unittest
 
 from ai_game.common import Strategy
+from ai_game.record import Recorder
 from ai_game.tic_tac_toe import *
 from ai_game.mcst import MCST, MCSTPlayer
 from ai_game.player import RandomPlayer, HumanPlayer
@@ -31,9 +32,10 @@ class TestTicTacToe(unittest.TestCase):
 
     def test_tic_tac_toe_with_mcst(self):
         mcst = MCST(game_cls=TicTacToe, rollout_choose_func=Strategy.random_choose)
+        recorder = Recorder(record_path="../record/test_record.jsonl")
 
         game = TicTacToe([MCSTPlayer("mcst_player1", mcst, 3),
-                          MCSTPlayer("mcst_player2", mcst, 3)])
+                          MCSTPlayer("mcst_player2", mcst, 3)], recorder)
         game.start()
 
     def test_tic_tac_toe_with_mcst_vs_human(self):

@@ -19,6 +19,8 @@ from typing import List
 
 from ai_game.common import Board, Color, Action, get_empty_positions, PutPieceAction, Piece, State, put_piece, is_full
 from ai_game.game import Game
+from ai_game.player import Player
+from ai_game.record import Record, ValueRecord, ActionRecord
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +37,15 @@ def get_line_same_color(line: List[Piece]) -> Color:
 
 
 class TicTacToe(Game):
-    BOARD_SIZE = 3
+    ROW_NUM = 3
+    COL_NUM = 3
     PLAYER_NUM = 2
     COLOR_LIST = [Color.X, Color.O]
 
-    def __init__(self, player_list):
+    def __init__(self, player_list, recorder=None):
         super().__init__(player_list)
-
         self.board = None
+        self.recorder = recorder
 
     def _init_board(self):
         logger.info("initializing board...")
@@ -59,7 +62,7 @@ class TicTacToe(Game):
 
     @classmethod
     def get_init_board(cls) -> Board:
-        board = Board(cls.BOARD_SIZE)
+        board = Board(row_num=cls.ROW_NUM, col_num=cls.COL_NUM)
         return board
 
     @classmethod
@@ -107,7 +110,21 @@ class TicTacToe(Game):
         return next_state
 
     def apply_action(self, action: PutPieceAction):
+        if self.recorder:
+            record = ActionRecord(state=self.cur_state, player_name=self.cur_player.name, action=action)
+            self.recorder.do_record(record)
+
         put_piece(self.board, action)
+
+    def process_winner(self, winner: Player):
+        if winner:
+            logger.info(f"game over, winner is :{winner.name}")
+            win_color = winner.color
+        else:
+            logger.info("game over, this is a draw game!")
+            win_color = None
+        if self.recorder:
+            self.recorder.do_record(ValueRecord(state=self.cur_state, win_color=win_color))
 
     def start(self):
         logger.info("game starts")
@@ -140,8 +157,5 @@ class TicTacToe(Game):
                 logger.info(f"all player skip, game ends")
                 break
             round += 1
-        if winner:
-            logger.info(f"game over, winner is :{winner.name}")
-        else:
-            logger.info("game over, this is a draw game!")
+        self.process_winner(winner)
         return winner
