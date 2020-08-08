@@ -11,16 +11,15 @@
 -------------------------------------------------
 """
 
-import logging
 import copy
-
+import logging
 from random import shuffle
 from typing import List
 
 from ai_game.common import Board, Color, Action, get_empty_positions, PutPieceAction, Piece, State, put_piece, is_full
 from ai_game.game import Game
 from ai_game.player import Player
-from ai_game.record import Record, ValueRecord, ActionRecord
+from ai_game.record import ActionRecord
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +61,7 @@ class TicTacToe(Game):
 
     @classmethod
     def get_init_board(cls) -> Board:
-        board = Board(row_num=cls.ROW_NUM, col_num=cls.COL_NUM)
+        board = Board.init_board(cls.ROW_NUM, cls.COL_NUM)
         return board
 
     @classmethod
@@ -110,10 +109,6 @@ class TicTacToe(Game):
         return next_state
 
     def apply_action(self, action: PutPieceAction):
-        if self.recorder:
-            record = ActionRecord(state=self.cur_state, player_name=self.cur_player.name, action=action)
-            self.recorder.do_record(record)
-
         put_piece(self.board, action)
 
     def process_winner(self, winner: Player):
@@ -124,7 +119,7 @@ class TicTacToe(Game):
             logger.info("game over, this is a draw game!")
             win_color = None
         if self.recorder:
-            self.recorder.do_record(ValueRecord(state=self.cur_state, win_color=win_color))
+            self.recorder.update_win_color(win_color)
 
     def start(self):
         logger.info("game starts")

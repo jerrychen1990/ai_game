@@ -31,6 +31,7 @@ class TestCompetition(unittest.TestCase):
         competition = Competition(game_cls, player_list, match_num)
         competition.start()
 
+    @unittest.skip("changed mcst")
     def test_mcst_competition(self):
         train_num = 5
         match_num = 100
@@ -43,16 +44,3 @@ class TestCompetition(unittest.TestCase):
         competition = Competition(game_cls, player_list, match_num)
         competition.start()
         mcst.store(f"../ckpt/mcst-{TicTacToe.__name__}-{match_num}-{train_num}.pkl")
-
-    def test_mcst_human_competition(self):
-        match_num = 5
-
-        mcst_path = "../ckpt/mcst-TicTacToe-100-5.pkl"
-        mcst = MCST.load(mcst_path)
-
-        game_cls = TicTacToe
-
-        player_list = [MCSTPlayer("mcst_player1", mcst, is_train=False),
-                       HumanPlayer("human_player2")]
-        competition = Competition(game_cls, player_list, match_num)
-        competition.start()

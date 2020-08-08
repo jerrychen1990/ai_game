@@ -14,7 +14,7 @@ import codecs
 import json
 
 from ai_game.common import *
-from ai_game.util import PythonObjectEncoder
+from ai_game.util import PythonObjectEncoder, ensure_file_path
 
 
 class Record(BaseModel):
@@ -24,19 +24,30 @@ class Record(BaseModel):
 class ActionRecord(Record):
     state: State
     player_name: str
-    action: Action
+    action: PutPieceAction
+    action_prob_list: List[Tuple[PutPieceAction, float]]
+    win_color: Color = None
 
 
-class ValueRecord(Record):
-    state: State
-    win_color: Color
+@ensure_file_path
+def dump_record(path, record_list):
+    with codecs.open(path, "w", "utf8") as f:
+        for record in record_list:
+            f.write(json.dumps(record, ensure_ascii=False, cls=PythonObjectEncoder))
+            f.write("\n")
 
 
 class Recorder:
     def __init__(self, record_path):
         self.record_path = record_path
+        self.record_list: List[ActionRecord] = []
 
-    def do_record(self, record: Record):
-        with codecs.open(self.record_path, "a", "utf8") as f:
-            f.write(json.dumps(record, ensure_ascii=False, cls=PythonObjectEncoder))
-            f.write("\n")
+    def do_record(self, record: ActionRecord):
+        self.record_list.append(record)
+
+    def update_win_color(self, win_color):
+        for record in self.record_list:
+            record.win_color = win_color
+
+    def dump_record(self):
+        dump_record(path=self.record_path, record_list=self.record_list)

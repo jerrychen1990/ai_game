@@ -1,4 +1,6 @@
+*.pyc
 record/
+__pycache__/
 ckpt/
 .idea/
 *.ipynb

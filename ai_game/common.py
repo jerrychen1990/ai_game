@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 
 from ai_game.constant import *
-from typing import List, Tuple
+from typing import List, Tuple, Any, Union
 
 
 class Color(str, Enum):
@@ -41,12 +41,22 @@ class Piece(BaseModel):
         return hash((type(self),) + tuple(self.__dict__.values()))
 
 
-class Board(object):
+PieceOrNone = Union[Piece, None]
 
-    def __init__(self, row_num, col_num):
-        self.row_num = row_num
-        self.col_num = col_num
-        self.board = [[None] * self.col_num for _ in range(self.row_num)]
+
+class Board(BaseModel):
+    row_num: int
+    col_num: int
+    board: List[List[PieceOrNone]]
+
+    @classmethod
+    def init_board(cls, row_num, col_num):
+        board = [[None] * col_num for _ in range(row_num)]
+        return Board(row_num=row_num, col_num=col_num, board=board)
+
+    @property
+    def color_board(self):
+        return [[p.color if p else Color.BLANK for p in row] for row in self.board]
 
     @property
     def rows(self):

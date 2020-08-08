@@ -12,12 +12,15 @@
 """
 
 import unittest
+
+from kg_schema.utils import show_pydantic_obj
+
 from ai_game.common import *
 
 
 class TestCommon(unittest.TestCase):
     def test_board(self):
-        board = Board(3)
+        board = Board.init_board(3, 3)
         print(board)
         board.set_piece(0, 0, Piece(color=Color.BLACK))
         board.set_piece(1, 1, Piece(color=Color.BLACK))
@@ -36,3 +39,10 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(6, len(empty_positions))
         print(board)
 
+    def test_state(self):
+        state_dict = {"board": {"row_num": 3, "col_num": 3,
+                                "board": [[{"color": "X"}, {"color": "O"}, {"color": "X"}],
+                                          [{"color": "O"}, {"color": "X"}, {"color": "O"}],
+                                          [{"color": "X"}, None, None]]}, "color": "X"}
+        state = State(**state_dict)
+        show_pydantic_obj(state)
