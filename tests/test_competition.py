@@ -33,7 +33,7 @@ class TestCompetition(unittest.TestCase):
 
     @unittest.skip("changed mcst")
     def test_mcst_competition(self):
-        train_num = 5
+        train_num = 3
         match_num = 100
 
         game_cls = TicTacToe

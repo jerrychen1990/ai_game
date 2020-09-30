@@ -25,7 +25,7 @@ class Player(object):
         self.color = None
 
     @abstractmethod
-    def choose_action(self, state: State, action_list: List[Action]) -> Action:
+    def choose_action(self, state: State, action_list: List[Action], round: int, **kwargs) -> Action:
         assert len(action_list) > 0
 
     def set_color(self, color: Color):
@@ -39,7 +39,7 @@ class RandomPlayer(Player):
     def __init__(self, name):
         self.name = name
 
-    def choose_action(self, state: State, action_list: List[Action]) -> Action:
+    def choose_action(self, state: State, action_list: List[Action], round: int, **kwargs) -> Action:
         return Strategy.random_choose(state, action_list)
 
 
@@ -47,7 +47,7 @@ class HumanPlayer(Player):
     def __init__(self, name):
         self.name = name
 
-    def choose_action(self, state: State, action_list: List[Action]) -> Action:
+    def choose_action(self, state: State, action_list: List[Action], round: int, **kwargs) -> Action:
         while True:
             try:
                 ipt = input("input row and col, split with space:")
@@ -63,4 +63,3 @@ class HumanPlayer(Player):
             except Exception as e:
                 logger.warning(e)
                 logger.info(f"invalid input {ipt}")
-

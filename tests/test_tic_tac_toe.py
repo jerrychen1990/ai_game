@@ -13,10 +13,10 @@
 import unittest
 
 from ai_game.common import Strategy
+from ai_game.mcst import MCST, MCSTPlayer
+from ai_game.player import RandomPlayer
 from ai_game.record import Recorder
 from ai_game.tic_tac_toe import *
-from ai_game.mcst import MCST, MCSTPlayer
-from ai_game.player import RandomPlayer, HumanPlayer
 
 
 class TestTicTacToe(unittest.TestCase):

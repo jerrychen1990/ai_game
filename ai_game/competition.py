@@ -34,7 +34,7 @@ class Competition:
 
     def start(self):
         for idx in range(self.match_num):
-            game: Game = self.game_cls(self.player_list)
+            game: Game = self.game_cls(self.player_list, level=logging.DEBUG)
             winner = game.start()
             if not winner:
                 winner = DRAW

@@ -12,8 +12,10 @@
 """
 import codecs
 import json
+from pydantic import BaseModel
+from typing import List, Tuple
 
-from ai_game.common import *
+from ai_game.common import State, PutPieceAction, Color
 from ai_game.util import PythonObjectEncoder, ensure_file_path
 
 

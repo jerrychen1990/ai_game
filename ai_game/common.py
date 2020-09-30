@@ -10,14 +10,14 @@
                    2020/7/29:
 -------------------------------------------------
 """
+from abc import ABC
 from enum import Enum
 from random import choice
+from typing import List, Tuple, Union
 
 from pydantic import BaseModel
-from pydantic.dataclasses import dataclass
 
 from ai_game.constant import *
-from typing import List, Tuple, Any, Union
 
 
 class Color(str, Enum):
@@ -141,3 +141,25 @@ class Strategy:
     @staticmethod
     def random_choose(state: State, action_list: List[Action]) -> Action:
         return choice(action_list)
+
+
+class ValueEstimator:
+    def eval_state(self, state: State) -> float:
+        raise NotImplementedError
+
+
+class ProbEstimator:
+    def get_prob(self, state: State, action_list: List[Action]) -> List[float]:
+        raise NotImplementedError
+
+
+class ProbValueEstimator(ValueEstimator, ProbEstimator, ABC):
+    def get_prob_value(self, state: State, action_list: List[Action]):
+        value = self.eval_state(state)
+        prob_list = self.get_prob(state, action_list)
+        return prob_list, value
+
+
+class Trainable:
+    def train(self, data, **kwargs):
+        raise NotImplementedError

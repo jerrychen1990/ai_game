@@ -10,9 +10,12 @@
                    2020/8/5:
 -------------------------------------------------
 """
+import codecs
 import json
 import os
 import random
+
+import logging
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -38,6 +41,13 @@ class PythonObjectEncoder(json.JSONEncoder):
 
 def jdumps(obj):
     return json.dumps(obj, indent=4, ensure_ascii=False, cls=PythonObjectEncoder)
+
+
+def jdump(obj, f):
+    if isinstance(f, str):
+        f = codecs.open(f, "w", "utf8")
+    with f:
+        json.dump(obj, f, indent=4, ensure_ascii=False, cls=PythonObjectEncoder)
 
 
 def weight_choice(seq: List[Tuple[Any, float]]):
@@ -73,3 +83,21 @@ def ensure_file_path(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def read_jsonline(file_path):
+    rs = []
+    with codecs.open(file_path, "r", "utf8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            item = json.loads(line)
+            rs.append(item)
+    return rs
+
+
+def get_logger(name, level):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    return logger

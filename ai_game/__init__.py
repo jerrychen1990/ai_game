@@ -14,7 +14,7 @@ import logging
 import pydantic
 import warnings
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(filename)s:%(lineno)s] [%(levelname)s]: %(message)s",
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(filename)s:%(lineno)s] [%(levelname)s]: %(message)s",
                     datefmt='%Y-%m-%d %H:%M:%S')
 
 pydantic.BaseConfig.arbitrary_types_allowed = True

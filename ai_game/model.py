@@ -10,7 +10,11 @@
                    2020/8/1:
 -------------------------------------------------
 """
+import codecs
+import copy
 import math
+import os
+import pickle
 
 import tensorflow as tf
 import logging
@@ -18,16 +22,20 @@ from tensorflow.keras.layers import Input, Convolution2D, Dense, Embedding, Flat
 from tensorflow.keras.models import Model
 from tensorflow.keras.losses import categorical_crossentropy, mse
 
-from ai_game.common import State, Action, Color, PutPieceAction
+from ai_game.common import State, Action, Color, PutPieceAction, Trainable
 from typing import List, Tuple
 import numpy as np
 
+from ai_game.common import ProbValueEstimator
 from ai_game.record import Record, ActionRecord
+from ai_game.util import ensure_file_path, ensure_dir_path
 
 logger = logging.getLogger(__name__)
 
 
-class StateModel:
+class StateModel(ProbValueEstimator, Trainable):
+    custom_objects = {}
+
     def __init__(self, color_list: List[Color]):
         self.color_list = color_list
         self.color_dict = {color: idx for idx, color in enumerate(color_list)}
@@ -37,7 +45,7 @@ class StateModel:
         self.col_num = None
         self.action_out_dim = None
 
-    def build_nn_model(self, row_num, col_num, embedding_dim, filter_list=[]):
+    def build_nn_model(self, row_num, col_num, embedding_dim, filter_list=[], dense_list=[]):
         logger.info("building nn model")
         board_input = Input(name="board_input", shape=(row_num, col_num))
         color_input = Input(name="color_input", shape=(1,))
@@ -56,6 +64,8 @@ class StateModel:
 
         board_embedding = Flatten()(board_embedding)
         total_embedding = Concatenate()([board_embedding, color_embedding])
+        for dense_dim in dense_list:
+            total_embedding = Dense(dense_dim, activation="relu")(total_embedding)
 
         action_out = Dense(self.action_out_dim, activation="softmax", name="action_out")(total_embedding)
         value_out = Dense(1, activation="tanh", name="value_out")(total_embedding)
@@ -77,7 +87,7 @@ class StateModel:
         self.nn_model.compile(optimizer="adam", loss=loss, loss_weights=loss_weights, metrics=["accuracy"])
 
     def train(self, data: List[ActionRecord], epochs, batch_size, buffer_size=1024, **kwargs):
-        logger.info(f"training with {len(data)} items")
+        logger.debug(f"training with {len(data)} items")
 
         def generator_func():
             for record in data:
@@ -88,18 +98,18 @@ class StateModel:
                                                                               value_out=tf.float32)
         dataset_shape = dict(board_input=(self.row_num, self.col_num,), color_input=()), dict(
             action_out=(self.action_out_dim,), value_out=())
-        logger.info("loading dataset...")
+        logger.debug("loading dataset...")
         dataset = tf.data.Dataset.from_generator(generator_func, output_types=dataset_type,
                                                  output_shapes=dataset_shape)
         count = dataset.reduce(0, lambda x, _: x + 1).numpy()
         dataset = dataset.repeat().shuffle(buffer_size=buffer_size).batch(batch_size).prefetch(
             buffer_size=batch_size)
-        logger.info(f"got dataset with {count} items...")
+        logger.debug(f"got dataset with {count} items...")
 
         if not kwargs.get("steps_per_epoch"):
             kwargs["steps_per_epoch"] = int(math.ceil(count / batch_size))
 
-        logger.info("fitting...")
+        logger.debug("fitting...")
         self.nn_model.fit(dataset, epochs=epochs, **kwargs)
         return self.nn_model
 
@@ -134,14 +144,57 @@ class StateModel:
         rs_dict = self._state2tf_item(state)
         return np.array([rs_dict['board_input']]), np.array([rs_dict['color_input']])
 
-    def predict(self, state: State, valid_action_list: List[PutPieceAction]) -> Tuple[List[float], float]:
+    def _predict(self, state: State) -> Tuple[List[float], float]:
         board_input, color_input = self._state2input(state)
         action_out, value_out = self.nn_model.predict([board_input, color_input])
         action_prob = action_out[0]
         value = value_out[0][0]
-        prob_list = [action_prob[action.row * self.col_num + action.col] for action in valid_action_list]
+        return action_prob, value
 
-        return prob_list, value
+    def _get_valid_action_prob(self, action_prob, valid_action_list: List[PutPieceAction]):
+        prob_list = [action_prob[action.row * self.col_num + action.col] for action in valid_action_list]
+        return prob_list
+
+    def eval_state(self, state: State) -> float:
+        return self._predict(state)[1]
+
+    def get_prob(self, state: State, action_list: List[Action]) -> List[float]:
+        return self.get_prob_value(state, action_list)[0]
+
+    def get_prob_value(self, state: State, action_list: List[Action]):
+        action_prob, value = self._predict(state)
+        action_prob = self._get_valid_action_prob(action_prob, action_list)
+        return action_prob, value
+
+    @ensure_dir_path
+    def save(self, path):
+        logger.info(f"save model to path:{path}")
+        pkl_path = os.path.join(path, "model.pkl")
+        with codecs.open(pkl_path, "wb") as f:
+            pickle.dump(self, f)
+        model_path = os.path.join(path, "model.h5")
+        self.nn_model.save(model_path, include_optimizer=False, save_format="h5")
+
+    @classmethod
+    def load(cls, path):
+        logger.info(f"loading state model from path:{path}")
+        pkl_path = os.path.join(path, "model.pkl")
+        model_path = os.path.join(path, "model.h5")
+        with codecs.open(pkl_path, "rb") as f:
+            rs: StateModel = pickle.load(f)
+        rs.nn_model = tf.keras.models.load_model(model_path, custom_objects=cls.custom_objects,
+                                                 compile=False)
+        return rs
+
+    def __getstate__(self):
+        odict = copy.copy(self.__dict__)
+        for key in ['nn_model', 'tokenizer', 'train_model', 'strategy']:
+            if key in odict.keys():
+                del odict[key]
+        return odict
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
 
 def get_state_model_of_game(game_cls, build_kwargs):
